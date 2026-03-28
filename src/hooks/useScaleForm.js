@@ -151,16 +151,16 @@ function normalizeRecentRecord(record) {
   return {
     id: String(record.id || record.id_lancamento || record.launchId || crypto.randomUUID()),
     createdAt: String(record.criado_em || record.createdAt || new Date().toISOString()),
-    employeeName: String(record.nome_funcionario || record.employeeName || 'Nao informado'),
-    employeeCategory: String(record.categoria_funcionario || record.employeeCategory || 'Nao informado'),
-    postName: String(record.nome_posto || record.postName || 'Nao informado'),
-    shiftName: String(record.nome_turno || record.shiftName || 'Nao informado'),
+    employeeName: String(record.nome_funcionario || record.employeeName || 'N\u00e3o informado'),
+    employeeCategory: String(record.categoria_funcionario || record.employeeCategory || 'N\u00e3o informado'),
+    postName: String(record.nome_posto || record.postName || 'N\u00e3o informado'),
+    shiftName: String(record.nome_turno || record.shiftName || 'N\u00e3o informado'),
     launchTypeLabel: String(
       record.tipo_lancamento_label ||
         record.launchTypeLabel ||
         record.tipo_lancamento ||
         record.launchType ||
-        'Lancamento',
+        'Lan\u00e7amento',
     ),
     eventualReasonLabel: record.motivo_eventual_label || record.eventualReasonLabel
       ? String(record.motivo_eventual_label || record.eventualReasonLabel)
@@ -305,7 +305,7 @@ export function useScaleForm({ enabled = true } = {}) {
         const reason =
           error instanceof Error ? ` Motivo: ${error.message}` : ''
         setSyncError(
-          `Nao foi possivel carregar dados da planilha. Usando dados locais.${reason}`,
+          `N\u00e3o foi poss\u00edvel carregar dados da planilha. Usando dados locais.${reason}`,
         )
       } finally {
         if (isMounted) setIsBootstrapping(false)
@@ -410,7 +410,7 @@ export function useScaleForm({ enabled = true } = {}) {
 
   const saveQuickAdd = async (type, values) => {
     if (!enabled) {
-      setSyncError('Sessao invalida. Faca login novamente.')
+      setSyncError('Sess\u00e3o inv\u00e1lida. Fa\u00e7a login novamente.')
       return false
     }
 
@@ -481,7 +481,7 @@ export function useScaleForm({ enabled = true } = {}) {
         const saturdayEnd = String(values.sabEnd || '').trim()
 
         if (!family || !start || !end) {
-          throw new Error('Preencha familia e horarios base do turno.')
+          throw new Error('Preencha fam\u00edlia e hor\u00e1rios base do turno.')
         }
 
         if (family === '12x36' && !parity) {
@@ -489,7 +489,7 @@ export function useScaleForm({ enabled = true } = {}) {
         }
 
         if (family === '6x1' && (!saturdayStart || !saturdayEnd)) {
-          throw new Error('Preencha horarios de sabado para turno 6x1.')
+          throw new Error('Preencha os hor\u00e1rios de s\u00e1bado para o turno 6x1.')
         }
 
         const fallback = {
@@ -518,14 +518,14 @@ export function useScaleForm({ enabled = true } = {}) {
         setForm((previous) => ({ ...previous, shiftId: saved.id }))
       }
 
-      setSyncMessage('Cadastro rapido salvo na planilha.')
+      setSyncMessage('Cadastro r\u00e1pido salvo na planilha.')
       setModal((previous) => ({ ...previous, isOpen: false }))
       return true
     } catch (error) {
       setSyncError(
         error instanceof Error
           ? error.message
-          : 'Falha ao salvar cadastro rapido.',
+          : 'Falha ao salvar cadastro r\u00e1pido.',
       )
       return false
     } finally {
@@ -555,7 +555,7 @@ export function useScaleForm({ enabled = true } = {}) {
   const handleSubmit = async (event) => {
     event.preventDefault()
     if (!enabled) {
-      setSyncError('Sessao invalida. Faca login novamente.')
+      setSyncError('Sess\u00e3o inv\u00e1lida. Fa\u00e7a login novamente.')
       return
     }
 
@@ -563,7 +563,7 @@ export function useScaleForm({ enabled = true } = {}) {
     setSyncMessage('')
 
     if (!form.employeeId || !form.postId || !form.shiftId) {
-      setSyncError('Preencha funcionario, posto e turno antes de salvar.')
+      setSyncError('Preencha funcion\u00e1rio, posto e turno antes de salvar.')
       return
     }
 
@@ -597,7 +597,7 @@ export function useScaleForm({ enabled = true } = {}) {
     try {
       setIsSubmitting(true)
       await createScaleLaunch(payload)
-      setSyncMessage('Lancamento salvo com sucesso na planilha.')
+      setSyncMessage('Lan\u00e7amento salvo com sucesso na planilha.')
       await loadRecent(form.company)
     } catch (error) {
       setSyncError(error instanceof Error ? error.message : 'Falha ao salvar na planilha.')

@@ -1,6 +1,6 @@
 const COMPANY_OPTIONS = [
-  { value: 'l4_servicos', label: 'L4 Servicos' },
-  { value: 'l4_pro_service', label: 'L4 Pro Service' },
+  { value: 'l4_servicos', label: 'L4 Servi\u00e7os' },
+  { value: 'l4_pro_service', label: 'L4 Pr\u00f3 Service' },
 ]
 
 const VARIANT_STYLES = {

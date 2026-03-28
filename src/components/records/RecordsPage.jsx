@@ -1,5 +1,13 @@
 import { useMemo, useState } from 'react'
 import { RecordEditModal } from './RecordEditModal'
+import {
+  formatCategory,
+  formatCompany,
+  formatDateTime,
+  formatHours,
+  formatLaunchType,
+  formatText,
+} from '../../utils/formatters'
 
 const SHEET_URL =
   import.meta.env.VITE_SHEETS_URL ||
@@ -8,30 +16,14 @@ const SHEET_URL =
 const PERIOD_OPTIONS = [
   { value: 'day', label: 'Hoje' },
   { value: 'week', label: 'Semana' },
-  { value: 'month', label: 'Mes' },
+  { value: 'month', label: 'M\u00eas' },
 ]
 
 const COMPANY_OPTIONS = [
-  { value: 'all', label: 'Todas empresas' },
-  { value: 'l4_servicos', label: 'L4 Servicos' },
-  { value: 'l4_pro_service', label: 'L4 Pro Service' },
+  { value: 'all', label: 'Todas as empresas' },
+  { value: 'l4_servicos', label: 'L4 Servi\u00e7os' },
+  { value: 'l4_pro_service', label: 'L4 Pr\u00f3 Service' },
 ]
-
-function formatDateTime(isoString) {
-  const date = new Date(isoString)
-
-  if (Number.isNaN(date.getTime())) {
-    return '-'
-  }
-
-  return date.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 export function RecordsPage({
   userName,
@@ -45,8 +37,12 @@ export function RecordsPage({
 
   const summary = useMemo(() => {
     const total = records.length
-    const extraHours = records.reduce((acc, record) => acc + Number(record.extraHours || 0), 0)
-    return { total, extraHours: extraHours.toFixed(1) }
+    const extraHours = records.reduce(
+      (acc, record) => acc + Number(record.extraHours || 0),
+      0,
+    )
+
+    return { total, extraHours }
   }, [records])
 
   return (
@@ -57,7 +53,7 @@ export function RecordsPage({
             <div className="max-w-md">
               <h1 className="text-2xl font-bold sm:text-3xl">Registros</h1>
               <p className="text-sm text-blue-100 sm:text-base">
-                {userName} - edite registros do dia, semana ou mes.
+                {userName} • edite os registros do dia, da semana ou do m\u00eas.
               </p>
             </div>
 
@@ -87,7 +83,7 @@ export function RecordsPage({
 
           <nav className="mt-2 grid grid-cols-2 gap-2">
             {[
-              { value: 'launch', label: 'Lancamentos' },
+              { value: 'launch', label: 'Lan\u00e7amentos' },
               { value: 'records', label: 'Registros' },
             ].map((item) => (
               <button
@@ -113,7 +109,7 @@ export function RecordsPage({
 
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-slate-700">Periodo</p>
+                  <p className="text-sm font-medium text-slate-700">Per\u00edodo</p>
                   <div className="grid grid-cols-3 gap-2">
                     {PERIOD_OPTIONS.map((option) => (
                       <button
@@ -153,7 +149,7 @@ export function RecordsPage({
                   Registros: <strong>{summary.total}</strong>
                 </p>
                 <p>
-                  Total HE: <strong>{summary.extraHours}h</strong>
+                  Total de hora extra: <strong>{formatHours(summary.extraHours)}</strong>
                 </p>
                 <button
                   type="button"
@@ -200,27 +196,33 @@ export function RecordsPage({
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-sm font-semibold text-slate-800">
-                            {record.employeeName}
+                            {formatText(record.employeeName)}
                           </p>
                           <p className="text-xs text-slate-500">
-                            {record.employeeCategory} - {record.postName}
+                            {formatCategory(record.employeeCategory)} • {formatText(record.postName)}
                           </p>
                         </div>
                         <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
-                          {record.launchTypeLabel}
+                          {formatLaunchType(record.launchType, record.launchTypeLabel)}
                         </span>
                       </div>
 
-                      <p className="mt-2 text-xs text-slate-600">Turno: {record.shiftName}</p>
+                      <p className="mt-2 text-xs text-slate-600">
+                        Turno: {formatText(record.shiftName)}
+                      </p>
+
+                      <p className="mt-1 text-xs text-slate-600">
+                        Empresa: {formatCompany(record.company)}
+                      </p>
 
                       {record.eventualReasonLabel ? (
                         <p className="mt-1 text-xs text-slate-600">
-                          Motivo eventual: {record.eventualReasonLabel}
+                          Motivo do eventual: {record.eventualReasonLabel}
                         </p>
                       ) : null}
 
                       <p className="mt-1 text-xs text-slate-600">
-                        HE: {record.extraHours}h - Almoco: {record.lunchDiscount}h
+                        Hora extra: {formatHours(record.extraHours)} • Almo\u00e7o: {formatHours(record.lunchDiscount)}
                       </p>
 
                       <div className="mt-2 flex items-center justify-between gap-3">

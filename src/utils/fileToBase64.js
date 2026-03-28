@@ -15,7 +15,7 @@ export function fileToBase64(file) {
     }
 
     reader.onerror = () => {
-      reject(new Error('Nao foi possivel converter o arquivo para Base64.'))
+      reject(new Error('N\u00e3o foi poss\u00edvel converter o arquivo para Base64.'))
     }
 
     reader.readAsDataURL(file)

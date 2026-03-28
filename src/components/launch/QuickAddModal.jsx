@@ -11,14 +11,14 @@ const SHIFT_TEMPLATE_OPTIONS = [
 
 const MODAL_META = {
   employee: {
-    title: 'Novo Funcionario',
+    title: 'Novo Funcion\u00e1rio',
     fields: [
       { name: 'cpf', label: 'CPF', type: 'text', required: true },
-      { name: 'startDate', label: 'Data de Inicio', type: 'date', required: true },
+      { name: 'startDate', label: 'Data de in\u00edcio', type: 'date', required: true },
       { name: 'name', label: 'Nome', type: 'text', required: true },
       {
         name: 'category',
-        label: 'Funcao',
+        label: 'Fun\u00e7\u00e3o',
         type: 'select',
         required: true,
         options: [
@@ -38,7 +38,7 @@ const MODAL_META = {
     fields: [
       {
         name: 'template',
-        label: 'Modelo rapido',
+        label: 'Modelo r\u00e1pido',
         type: 'select',
         required: false,
         options: SHIFT_TEMPLATE_OPTIONS,
@@ -46,7 +46,7 @@ const MODAL_META = {
       { name: 'name', label: 'Nome do Turno', type: 'text', required: true },
       {
         name: 'family',
-        label: 'Familia do Turno',
+        label: 'Fam\u00edlia do turno',
         type: 'select',
         required: true,
         options: [
@@ -68,8 +68,8 @@ const MODAL_META = {
       },
       { name: 'start', label: 'Entrada (Seg-Sex)', type: 'time', required: true },
       { name: 'end', label: 'Saida (Seg-Sex)', type: 'time', required: true },
-      { name: 'sabStart', label: 'Entrada sabado', type: 'time', required: true },
-      { name: 'sabEnd', label: 'Saida sabado', type: 'time', required: true },
+      { name: 'sabStart', label: 'Entrada s\u00e1bado', type: 'time', required: true },
+      { name: 'sabEnd', label: 'Sa\u00edda s\u00e1bado', type: 'time', required: true },
     ],
   },
 }

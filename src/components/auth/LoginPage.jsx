@@ -25,7 +25,7 @@ export function LoginPage({ onLogin, isSubmitting, error }) {
     <div className="min-h-screen bg-slate-100">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col lg:py-6">
         <header className="rounded-b-3xl bg-blue-600 px-4 py-6 text-white shadow-md sm:px-6">
-          <h1 className="text-2xl font-bold sm:text-3xl">Gestao de Escalas</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">Gest\u00e3o de Escalas</h1>
           <p className="mt-1 text-sm text-blue-100 sm:text-base">
             Acesse com login e senha cadastrados no Google Sheets.
           </p>

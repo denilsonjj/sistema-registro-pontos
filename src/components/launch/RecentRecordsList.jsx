@@ -1,25 +1,17 @@
-function formatDateTime(isoString) {
-  const date = new Date(isoString)
-
-  if (Number.isNaN(date.getTime())) {
-    return '-'
-  }
-
-  return date.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
+import {
+  formatCategory,
+  formatDateTime,
+  formatHours,
+  formatText,
+} from '../../utils/formatters'
 
 export function RecentRecordsList({ records }) {
   if (!records.length) {
     return (
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="text-base font-semibold text-slate-800">Registros Recentes</h2>
+        <h2 className="text-base font-semibold text-slate-800">Registros recentes</h2>
         <p className="mt-2 text-sm text-slate-500">
-          Ainda nao ha lancamentos nesta sessao.
+          Ainda não há lançamentos nesta sessão.
         </p>
       </section>
     )
@@ -27,7 +19,7 @@ export function RecentRecordsList({ records }) {
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="text-base font-semibold text-slate-800">Registros Recentes</h2>
+      <h2 className="text-base font-semibold text-slate-800">Registros recentes</h2>
       <div className="mt-3 space-y-2">
         {records.map((record) => (
           <article
@@ -37,10 +29,10 @@ export function RecentRecordsList({ records }) {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-800">
-                  {record.employeeName}
+                  {formatText(record.employeeName)}
                 </p>
                 <p className="text-xs text-slate-500">
-                  {record.employeeCategory} - {record.postName}
+                  {formatCategory(record.employeeCategory)} • {formatText(record.postName)}
                 </p>
               </div>
               <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
@@ -48,26 +40,26 @@ export function RecentRecordsList({ records }) {
               </span>
             </div>
 
-            <p className="mt-2 text-xs text-slate-600">Turno: {record.shiftName}</p>
+            <p className="mt-2 text-xs text-slate-600">Turno: {formatText(record.shiftName)}</p>
 
             {record.eventualReasonLabel ? (
               <p className="mt-1 text-xs text-slate-600">
-                Motivo eventual: {record.eventualReasonLabel}
+                Motivo do eventual: {record.eventualReasonLabel}
               </p>
             ) : null}
 
             <p className="mt-1 text-xs text-slate-600">
-              HE: {record.extraHours}h - Almoco: {record.lunchDiscount}h
+              Hora extra: {formatHours(record.extraHours)} • Almoço: {formatHours(record.lunchDiscount)}
             </p>
 
             <p className="mt-1 text-xs text-slate-600">
               {record.batchDays
                 ? `Escala gerada para ${record.batchDays} dias (${record.generatedEntries} registros).`
-                : 'Lancamento eventual registrado.'}
+                : 'Lançamento eventual registrado.'}
             </p>
 
             <p className="mt-2 text-[11px] text-slate-400">
-              {formatDateTime(record.createdAt)}
+              {formatDateTime(record.createdAt, { short: true })}
             </p>
           </article>
         ))}

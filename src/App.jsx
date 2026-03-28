@@ -16,7 +16,7 @@ function App() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4">
         <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
-          <p className="text-sm text-slate-600">Verificando sessao...</p>
+          <p className="text-sm text-slate-600">Verificando sess\u00e3o...</p>
         </div>
       </div>
     )

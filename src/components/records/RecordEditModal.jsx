@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
+import {
+  formatDate,
+  formatHours,
+  formatLaunchType,
+  formatText,
+} from '../../utils/formatters'
 
 const EVENTUAL_REASON_OPTIONS = [
-  { value: 'hora_extra', label: 'Hora Extra' },
+  { value: 'hora_extra', label: 'Hora extra' },
   { value: 'falta_sem_atestado', label: 'Falta sem atestado' },
   { value: 'falta_com_atestado', label: 'Falta com atestado' },
   { value: 'cobertura_avulsa', label: 'Cobertura avulsa' },
@@ -65,8 +71,10 @@ export function RecordEditModal({
       <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-4 shadow-xl sm:p-5">
         <header className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-slate-800">Editar Registro</h3>
-            <p className="text-xs text-slate-500">{record.employeeName}</p>
+            <h3 className="text-lg font-semibold text-slate-800">Editar registro</h3>
+            <p className="text-xs text-slate-500">
+              {formatText(record.employeeName)} {'\u2022'} {formatLaunchType(record.launchType)}
+            </p>
           </div>
           <button
             type="button"
@@ -82,7 +90,7 @@ export function RecordEditModal({
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-700">Hora Extra</label>
+              <label className="text-sm font-medium text-slate-700">Hora extra</label>
               <input
                 type="number"
                 min="0"
@@ -99,7 +107,7 @@ export function RecordEditModal({
             </div>
 
             <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-700">Almoco (desconto)</label>
+              <label className="text-sm font-medium text-slate-700">Almo\u00e7o (desconto)</label>
               <input
                 type="number"
                 min="0"
@@ -119,7 +127,7 @@ export function RecordEditModal({
           {isEventual ? (
             <>
               <div className="space-y-1">
-                <label className="text-sm font-medium text-slate-700">Motivo eventual</label>
+                <label className="text-sm font-medium text-slate-700">Motivo do eventual</label>
                 <select
                   value={values.eventualReason}
                   onChange={(event) =>
@@ -139,7 +147,7 @@ export function RecordEditModal({
               </div>
 
               <div className="space-y-1">
-                <label className="text-sm font-medium text-slate-700">Data eventual</label>
+                <label className="text-sm font-medium text-slate-700">Data do eventual</label>
                 <input
                   type="date"
                   value={values.eventualDate}
@@ -151,9 +159,18 @@ export function RecordEditModal({
                   }
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-base text-slate-700 outline-none ring-blue-600 transition focus:ring-2"
                 />
+                {values.eventualDate ? (
+                  <p className="text-xs text-slate-500">
+                    Data selecionada: {formatDate(values.eventualDate)}
+                  </p>
+                ) : null}
               </div>
             </>
           ) : null}
+
+          <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            Hora extra: {formatHours(values.extraHours)} {'\u2022'} Almo\u00e7o: {formatHours(values.lunchDiscount)}
+          </div>
 
           <div className="flex items-center justify-end gap-2 pt-1">
             <button
@@ -169,7 +186,7 @@ export function RecordEditModal({
               disabled={isSaving}
               className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
             >
-              {isSaving ? 'Salvando...' : 'Salvar alteracoes'}
+              {isSaving ? 'Salvando...' : 'Salvar altera\u00e7\u00f5es'}
             </button>
           </div>
         </form>

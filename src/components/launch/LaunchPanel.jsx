@@ -28,9 +28,9 @@ export function LaunchPanel({
         <header className="rounded-b-3xl bg-blue-600 px-4 py-5 text-white shadow-md sm:px-6">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div className="max-w-md">
-              <h1 className="text-2xl font-bold sm:text-3xl">Ola, {userName}</h1>
+              <h1 className="text-2xl font-bold sm:text-3xl">Ol\u00e1, {userName}</h1>
               <p className="text-sm text-blue-100 sm:text-base">
-                Painel de Lancamento de Escalas
+                Painel de lan\u00e7amento de escalas
               </p>
             </div>
 
@@ -65,7 +65,7 @@ export function LaunchPanel({
 
           <nav className="mt-3 grid grid-cols-2 gap-2">
             {[
-              { value: 'launch', label: 'Lancamentos' },
+              { value: 'launch', label: 'Lan\u00e7amentos' },
               { value: 'records', label: 'Registros' },
             ].map((item) => (
               <button

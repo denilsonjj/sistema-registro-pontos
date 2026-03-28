@@ -2,7 +2,7 @@ export function AdditionalFields({ extraHours, lunchDiscount, onChange }) {
   return (
     <div className="grid grid-cols-2 gap-3">
       <div className="space-y-1">
-        <label className="text-sm font-medium text-slate-700">Hora Extra</label>
+        <label className="text-sm font-medium text-slate-700">Hora extra</label>
         <input
           type="number"
           min="0"
@@ -17,7 +17,7 @@ export function AdditionalFields({ extraHours, lunchDiscount, onChange }) {
 
       <div className="space-y-1">
         <label className="text-sm font-medium text-slate-700">
-          Almoco (desconto)
+          Almo\u00e7o (desconto)
         </label>
         <input
           type="number"

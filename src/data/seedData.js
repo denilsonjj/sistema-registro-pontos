@@ -23,7 +23,7 @@ export const LAUNCH_TYPE_OPTIONS = [
   {
     value: 'fixo',
     label: 'Turno Fixo',
-    description: 'Lanca uma vez e gera automaticamente por 30, 60 ou 120 dias.',
+    description: 'Lan\u00e7a uma vez e gera automaticamente por 30, 60 ou 120 dias.',
   },
   {
     value: 'eventual',

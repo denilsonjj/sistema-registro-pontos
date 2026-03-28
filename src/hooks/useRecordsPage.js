@@ -17,10 +17,10 @@ function normalizeRecentRecord(record) {
     launchId,
     createdAt: String(record.criado_em || record.createdAt || new Date().toISOString()),
     company: String(record.empresa || record.company || ''),
-    employeeName: String(record.nome_funcionario || record.employeeName || 'Nao informado'),
-    employeeCategory: String(record.categoria_funcionario || record.employeeCategory || 'Nao informado'),
-    postName: String(record.nome_posto || record.postName || 'Nao informado'),
-    shiftName: String(record.nome_turno || record.shiftName || 'Nao informado'),
+    employeeName: String(record.nome_funcionario || record.employeeName || 'N\u00e3o informado'),
+    employeeCategory: String(record.categoria_funcionario || record.employeeCategory || 'N\u00e3o informado'),
+    postName: String(record.nome_posto || record.postName || 'N\u00e3o informado'),
+    shiftName: String(record.nome_turno || record.shiftName || 'N\u00e3o informado'),
     launchType,
     launchTypeLabel: String(
       record.tipo_lancamento_label ||
@@ -120,7 +120,7 @@ export function useRecordsPage({ enabled = true }) {
 
   const saveRecordChanges = async ({ launchId, data }) => {
     if (!launchId) {
-      setError('Registro invalido para edicao.')
+      setError('Registro inv\u00e1lido para edi\u00e7\u00e3o.')
       return false
     }
 

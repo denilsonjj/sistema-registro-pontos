@@ -60,7 +60,7 @@ export function useAuth() {
       ).trim()
 
       if (!token) {
-        throw new Error('API de login nao retornou token de sessao.')
+        throw new Error('A API de login n\u00e3o retornou um token de sess\u00e3o.')
       }
 
       const normalizedSession = {

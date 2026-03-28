@@ -8,16 +8,16 @@ function getShiftRuleText(shift) {
   if (!shift) return ''
 
   if (shift.family === '5x2') {
-    return `Regra automatica: trabalha de segunda a sexta (${shift.start} - ${shift.end}) e folga sabado e domingo.`
+    return `Regra autom\u00e1tica: trabalha de segunda a sexta (${shift.start} - ${shift.end}) e folga s\u00e1bado e domingo.`
   }
 
   if (shift.family === '6x1') {
-    return `Regra automatica: trabalha de segunda a sabado. Sabado segue horario reduzido (${shift.saturdayStart} - ${shift.saturdayEnd}). Domingo fica como folga.`
+    return `Regra autom\u00e1tica: trabalha de segunda a s\u00e1bado. S\u00e1bado segue hor\u00e1rio reduzido (${shift.saturdayStart} - ${shift.saturdayEnd}). Domingo fica como folga.`
   }
 
   if (shift.family === '12x36') {
-    const parityLabel = shift.parity === 'par' ? 'dias pares' : 'dias impares'
-    return `Regra automatica: escala 12x36 respeitando ${parityLabel}, no horario ${shift.start} - ${shift.end}.`
+    const parityLabel = shift.parity === 'par' ? 'dias pares' : 'dias \u00edmpares'
+    return `Regra autom\u00e1tica: escala 12x36 respeitando ${parityLabel}, no hor\u00e1rio ${shift.start} - ${shift.end}.`
   }
 
   return ''
@@ -42,7 +42,7 @@ export function LaunchForm({ scaleForm }) {
     <form onSubmit={actions.handleSubmit} className="space-y-4">
       <PanelSection
         title="Empresa ativa"
-        description="Escolha a empresa antes de selecionar funcionario e posto"
+        description="Escolha a empresa antes de selecionar funcion\u00e1rio e posto"
       >
         <CompanyToggle
           value={form.company}
@@ -52,8 +52,8 @@ export function LaunchForm({ scaleForm }) {
       </PanelSection>
 
       <PanelSection
-        title="Funcionario"
-        description="Escolha a funcao e depois selecione o colaborador"
+        title="Funcion\u00e1rio"
+        description="Escolha a fun\u00e7\u00e3o e depois selecione o colaborador"
       >
         <div className="mb-3 grid grid-cols-2 gap-2">
           {options.employeeCategories.map((category) => (
@@ -74,8 +74,8 @@ export function LaunchForm({ scaleForm }) {
         </div>
 
         <SelectWithAdd
-          label="Funcionario"
-          placeholder="Selecione o funcionario..."
+          label="Funcion\u00e1rio"
+          placeholder="Selecione o funcion\u00e1rio..."
           value={form.employeeId}
           options={options.employees}
           searchTerm={search.employee}
@@ -99,8 +99,8 @@ export function LaunchForm({ scaleForm }) {
       </PanelSection>
 
       <PanelSection
-        title="Modo de Lancamento"
-        description="Use fixo para automacao e eventual para ajustes pontuais"
+        title="Modo de Lan\u00e7amento"
+        description="Use fixo para automa\u00e7\u00e3o e eventual para ajustes pontuais"
       >
         <LaunchTypeSelector
           launchType={form.launchType}
@@ -116,7 +116,7 @@ export function LaunchForm({ scaleForm }) {
         {isBatchLaunch ? (
           <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
             <p className="mb-2 text-sm font-medium text-emerald-800">
-              Automacao ativa: a escala sera criada de uma vez.
+              Automa\u00e7\u00e3o ativa: a escala ser\u00e1 criada de uma vez.
             </p>
             <div className="space-y-2">
               <div className="space-y-1">
@@ -155,7 +155,7 @@ export function LaunchForm({ scaleForm }) {
 
             <div className="mt-2 grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <label className="text-sm font-medium text-slate-700">Inicio</label>
+                <label className="text-sm font-medium text-slate-700">In\u00edcio</label>
                 <input
                   type="date"
                   value={form.startDate}
@@ -164,7 +164,7 @@ export function LaunchForm({ scaleForm }) {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-sm font-medium text-slate-700">Periodo</label>
+                <label className="text-sm font-medium text-slate-700">Per\u00edodo</label>
                 <select
                   value={form.batchDays}
                   onChange={(event) => actions.updateField('batchDays', Number(event.target.value))}
@@ -184,7 +184,7 @@ export function LaunchForm({ scaleForm }) {
         {isEventualLaunch ? (
           <div className="mt-3 space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
             <p className="text-sm text-amber-800">
-              Use eventual para cobrir falta, hora extra ou funcionario avulso.
+              Use eventual para cobrir falta, hora extra ou funcion\u00e1rio avulso.
             </p>
             <div className="space-y-1">
               <div className="flex items-center justify-between">
@@ -223,7 +223,7 @@ export function LaunchForm({ scaleForm }) {
       </PanelSection>
 
       {shouldShowUploadField ? (
-        <PanelSection title="Upload de atestado" description="Arquivo sera convertido para Base64">
+        <PanelSection title="Upload de atestado" description="O arquivo ser\u00e1 convertido para Base64">
           <div className="space-y-2">
             <input
               type="file"
@@ -247,7 +247,7 @@ export function LaunchForm({ scaleForm }) {
         </PanelSection>
       ) : null}
 
-      <PanelSection title="Adicionais" description="Hora extra e desconto de almoco">
+      <PanelSection title="Adicionais" description="Hora extra e desconto de almo\u00e7o">
         <AdditionalFields
           extraHours={form.extraHours}
           lunchDiscount={form.lunchDiscount}
@@ -264,8 +264,8 @@ export function LaunchForm({ scaleForm }) {
           {isSubmitting
             ? 'Salvando na planilha...'
             : isBatchLaunch
-              ? 'Gerar Escala Automatica'
-              : 'Salvar Lancamento Eventual'}
+              ? 'Gerar Escala Autom\u00e1tica'
+              : 'Salvar Lan\u00e7amento Eventual'}
         </button>
       </div>
     </form>

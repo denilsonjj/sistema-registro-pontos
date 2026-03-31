@@ -1,5 +1,6 @@
 const APPS_SCRIPT_ENDPOINT = import.meta.env.VITE_APPS_SCRIPT_URL || ''
 let sessionToken = ''
+const REQUEST_TIMEOUT_MS = 20000
 
 function getEndpointUrl(params = {}) {
   if (!APPS_SCRIPT_ENDPOINT) {
@@ -26,12 +27,31 @@ async function readJsonResponse(response) {
   try {
     return JSON.parse(raw)
   } catch {
-    throw new Error('Resposta invalida da API.')
+    const preview = String(raw || '').slice(0, 120).replace(/\s+/g, ' ')
+    throw new Error(
+      `Resposta invalida da API (nao JSON). Verifique deploy/permissoes do Apps Script. Trecho: ${preview}`,
+    )
   }
 }
 
 async function requestGet(params) {
-  const response = await fetch(getEndpointUrl(withAuthParams(params)))
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  let response
+
+  try {
+    response = await fetch(getEndpointUrl(withAuthParams(params)), {
+      signal: controller.signal,
+      redirect: 'follow',
+    })
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('Tempo limite excedido ao consultar Apps Script (GET).')
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
+  }
 
   if (!response.ok) {
     throw new Error(`Erro HTTP ${response.status}`)
@@ -47,12 +67,27 @@ async function requestGet(params) {
 }
 
 async function requestPost(body, { useAuth = true } = {}) {
-  const response = await fetch(getEndpointUrl(), {
-    method: 'POST',
-    // Apps Script costuma bloquear preflight com application/json.
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(withAuthBody(body, useAuth)),
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  let response
+
+  try {
+    response = await fetch(getEndpointUrl(), {
+      method: 'POST',
+      // Apps Script costuma bloquear preflight com application/json.
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(withAuthBody(body, useAuth)),
+      signal: controller.signal,
+      redirect: 'follow',
+    })
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('Tempo limite excedido ao consultar Apps Script (POST).')
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
+  }
 
   if (!response.ok) {
     throw new Error(`Erro HTTP ${response.status}`)
@@ -83,6 +118,17 @@ export function getRecentRecords({ company, limit = 10 } = {}) {
   })
 }
 
+export function getRecordsReport({ company, employeeId, postId, month, limit = 500 } = {}) {
+  return requestGet({
+    action: 'recordsreport',
+    company: company || '',
+    employeeId: employeeId || '',
+    postId: postId || '',
+    month: month || '',
+    limit: String(limit),
+  })
+}
+
 export function createScaleLaunch(payload) {
   return requestPost({
     action: 'createlaunch',
@@ -97,6 +143,27 @@ export function createLookupItem(type, payload) {
       type,
       data: payload,
     },
+  })
+}
+
+export function createCategory(payload) {
+  return requestPost({
+    action: 'createcategory',
+    payload,
+  })
+}
+
+export function deleteCategory(payload) {
+  return requestPost({
+    action: 'deletecategory',
+    payload,
+  })
+}
+
+export function updateEmployeeCategory(payload) {
+  return requestPost({
+    action: 'updateemployeecategory',
+    payload,
   })
 }
 
@@ -122,6 +189,16 @@ export function updateScaleLaunch({ launchId, data }) {
     action: 'updatelaunch',
     payload: {
       launchId,
+      data,
+    },
+  })
+}
+
+export function updateScaleEntry({ scaleId, data }) {
+  return requestPost({
+    action: 'updatescaleentry',
+    payload: {
+      scaleId,
       data,
     },
   })

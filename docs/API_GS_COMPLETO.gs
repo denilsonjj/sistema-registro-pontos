@@ -1,6 +1,9 @@
 const TZ = 'America/Sao_Paulo'
 
 const CABECALHOS = {
+  categorias: [
+    'id_categoria', 'nome', 'ativo', 'criado_em', 'atualizado_em',
+  ],
   funcionarios: [
     'id_funcionario', 'nome', 'categoria', 'cargo', 'cpf', 'data_inicio',
     'empresa', 'ativo', 'criado_em', 'atualizado_em',
@@ -15,7 +18,8 @@ const CABECALHOS = {
   lancamentos: [
     'id_lancamento', 'id_lote', 'empresa', 'id_funcionario', 'id_posto', 'id_turno',
     'tipo_lancamento', 'motivo_eventual', 'data_eventual', 'data_inicio', 'dias_lote',
-    'hora_extra', 'desconto_almoco', 'nome_arquivo', 'mime_arquivo',
+    'hora_extra', 'desconto_almoco', 'vale', 'motivo_desconto',
+    'nome_arquivo', 'mime_arquivo', 'modo_repeticao', 'dias_semana_customizados',
     'id_arquivo_drive', 'criado_em',
   ],
   escala_diaria: [
@@ -31,6 +35,13 @@ const CABECALHOS = {
 }
 
 const ALIASES = {
+  categorias: {
+    id_categoria: ['id_categoria', 'categoryId'],
+    nome: ['nome', 'name'],
+    ativo: ['ativo'],
+    criado_em: ['criado_em', 'createdAt'],
+    atualizado_em: ['atualizado_em', 'updatedAt'],
+  },
   funcionarios: {
     id_funcionario: ['id_funcionario', 'employeeId'],
     nome: ['nome', 'name'],
@@ -78,8 +89,12 @@ const ALIASES = {
     dias_lote: ['dias_lote', 'batchDays'],
     hora_extra: ['hora_extra', 'extraHours'],
     desconto_almoco: ['desconto_almoco', 'lunchDiscount'],
+    vale: ['vale', 'mealAllowance'],
+    motivo_desconto: ['motivo_desconto', 'discountReason'],
     nome_arquivo: ['nome_arquivo', 'attachmentFileName'],
     mime_arquivo: ['mime_arquivo', 'attachmentMimeType'],
+    modo_repeticao: ['modo_repeticao', 'recurrenceMode'],
+    dias_semana_customizados: ['dias_semana_customizados', 'customWeekDays'],
     id_arquivo_drive: ['id_arquivo_drive', 'attachmentDriveFileId'],
     criado_em: ['criado_em', 'createdAt'],
   },
@@ -132,6 +147,20 @@ function doGet(e) {
       return jsonResponse_({ ok: true, data: { records: getRecentRecords_(company, limit) } })
     }
 
+    if (action === 'recordsreport') {
+      const company = String((e && e.parameter && e.parameter.company) || '').trim()
+      const employeeId = String((e && e.parameter && e.parameter.employeeId) || '').trim()
+      const postId = String((e && e.parameter && e.parameter.postId) || '').trim()
+      const month = String((e && e.parameter && e.parameter.month) || '').trim()
+      const limit = Number((e && e.parameter && e.parameter.limit) || 500)
+      return jsonResponse_({
+        ok: true,
+        data: {
+          records: getRecordsReport_(company, employeeId, postId, month, limit),
+        },
+      })
+    }
+
     return jsonResponse_({ ok: false, error: 'action invalida' })
   } catch (err) {
     logAudit_('doGet', { action: action }, false, err.message)
@@ -159,8 +188,24 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: createLookupItem_(body.payload || {}) })
     }
 
+    if (action === 'createcategory') {
+      return jsonResponse_({ ok: true, data: createCategory_(body.payload || {}) })
+    }
+
+    if (action === 'deletecategory') {
+      return jsonResponse_({ ok: true, data: deleteCategory_(body.payload || {}) })
+    }
+
+    if (action === 'updateemployeecategory') {
+      return jsonResponse_({ ok: true, data: updateEmployeeCategory_(body.payload || {}) })
+    }
+
     if (action === 'updatelaunch') {
       return jsonResponse_({ ok: true, data: updateLaunch_(body.payload || {}) })
+    }
+
+    if (action === 'updatescaleentry') {
+      return jsonResponse_({ ok: true, data: updateScaleEntry_(body.payload || {}) })
     }
 
     return jsonResponse_({ ok: false, error: 'action invalida' })
@@ -231,8 +276,23 @@ function criarUsuarioInicial() {
   return { created: true, usuario: 'admin' }
 }
 
+function dateMatchesMonth_(value, month) {
+  const text = String(value || '').trim()
+  if (!text || !month) return false
+  return text.slice(0, 7) === month
+}
+
+function normalizeCustomWeekDays_(value) {
+  if (!Array.isArray(value)) return ''
+  return value
+    .map(function(item) { return Number(item) })
+    .filter(function(item) { return !isNaN(item) && item >= 0 && item <= 6 })
+    .join(',')
+}
+
 function getBootstrapData_() {
   return {
+    categorias: lerAbaCanonica_('categorias').filter(function(r) { return isAtivo_(r.ativo) }),
     funcionarios: lerAbaCanonica_('funcionarios').filter(function(r) { return isAtivo_(r.ativo) }),
     postos: lerAbaCanonica_('postos').filter(function(r) { return isAtivo_(r.ativo) }),
     turnos: lerAbaCanonica_('turnos').filter(function(r) { return isAtivo_(r.ativo) }),
@@ -246,13 +306,14 @@ function createLookupItem_(payload) {
 
   if (type === 'employee') {
     const id = nextUniqueId_('funcionarios', 'id_funcionario', toId_(data.name || 'funcionario'))
-    const categoria = String(data.category || 'vigilante')
+    const categoria = String(data.category || 'controle_de_acesso')
+    ensureCategoryExists_(categoria)
 
     const row = {
       id_funcionario: id,
       nome: String(data.name || ''),
       categoria: categoria,
-      cargo: String(data.role || (categoria === 'limpeza' ? 'Limpeza' : 'Vigilante')),
+      cargo: categoria,
       cpf: String(data.cpf || ''),
       data_inicio: String(data.startDate || ''),
       empresa: String(data.company || ''),
@@ -308,6 +369,101 @@ function createLookupItem_(payload) {
   throw new Error('Tipo de lookup invalido.')
 }
 
+function createCategory_(payload) {
+  const nowIso = new Date().toISOString()
+  const name = String(payload.name || '').trim()
+  const value = String(payload.value || toId_(name).replace(/-/g, '_')).trim()
+
+  if (!name) throw new Error('Nome da categoria obrigatorio.')
+  if (!value) throw new Error('Identificador da categoria obrigatorio.')
+
+  const existing = findRowByField_('categorias', ['id_categoria', 'categoryId'], value)
+  if (existing && isAtivo_(existing.ativo)) {
+    throw new Error('Essa categoria ja existe.')
+  }
+
+  if (existing) {
+    updateRowByField_('categorias', ['id_categoria', 'categoryId'], value, {
+      nome: name,
+      ativo: 'TRUE',
+      atualizado_em: nowIso,
+    })
+
+    return {
+      item: {
+        id_categoria: value,
+        nome: name,
+        ativo: 'TRUE',
+        atualizado_em: nowIso,
+      },
+    }
+  }
+
+  const row = {
+    id_categoria: value,
+    nome: name,
+    ativo: 'TRUE',
+    criado_em: nowIso,
+    atualizado_em: nowIso,
+  }
+
+  appendObjetoCanonico_('categorias', row)
+  logAudit_('createCategory', row, true, value)
+  return { item: row }
+}
+
+function updateEmployeeCategory_(payload) {
+  const employeeId = String(payload.employeeId || payload.id_funcionario || '').trim()
+  const category = String(payload.category || payload.categoria || '').trim()
+
+  if (!employeeId) throw new Error('employeeId obrigatorio.')
+  if (!category) throw new Error('Categoria obrigatoria.')
+
+  const nowIso = new Date().toISOString()
+  updateRowByField_('funcionarios', ['id_funcionario', 'employeeId'], employeeId, {
+    categoria: category,
+    cargo: category,
+    atualizado_em: nowIso,
+  })
+
+  logAudit_('updateEmployeeCategory', payload, true, employeeId)
+  return { employeeId: employeeId, categoria: category, updated: true }
+}
+
+function deleteCategory_(payload) {
+  const categoryValue = String(payload.categoryValue || payload.id_categoria || '').trim()
+  const replacementCategory = String(payload.replacementCategory || '').trim()
+
+  if (!categoryValue) throw new Error('categoryValue obrigatorio.')
+
+  const category = findRowByField_('categorias', ['id_categoria', 'categoryId'], categoryValue)
+  if (!category) throw new Error('Categoria nao encontrada.')
+
+  const employees = lerAbaCanonica_('funcionarios').filter(function(row) {
+    return String(row.categoria || '').trim() === categoryValue
+  })
+
+  if (employees.length && !replacementCategory) {
+    throw new Error('Escolha uma categoria de destino antes de excluir.')
+  }
+
+  if (employees.length) {
+    ensureCategoryExists_(replacementCategory)
+    updateRowsByField_('funcionarios', ['categoria', 'category'], categoryValue, {
+      categoria: replacementCategory,
+      cargo: replacementCategory,
+    })
+  }
+
+  updateRowByField_('categorias', ['id_categoria', 'categoryId'], categoryValue, {
+    ativo: 'FALSE',
+    atualizado_em: new Date().toISOString(),
+  })
+
+  logAudit_('deleteCategory', payload, true, categoryValue)
+  return { categoryValue: categoryValue, deleted: true }
+}
+
 function createLaunch_(payload) {
   const nowIso = new Date().toISOString()
   const launchId = Utilities.getUuid()
@@ -337,8 +493,12 @@ function createLaunch_(payload) {
     dias_lote: payload.batchDays ? Number(payload.batchDays) : '',
     hora_extra: Number(payload.extraHours || 0),
     desconto_almoco: Number(payload.lunchDiscount || 0),
+    vale: Number(payload.mealAllowance || 0),
+    motivo_desconto: String(payload.discountReason || ''),
     nome_arquivo: payload.attachment ? String(payload.attachment.name || '') : '',
     mime_arquivo: payload.attachment ? String(payload.attachment.mimeType || '') : '',
+    modo_repeticao: String(payload.recurrenceMode || ''),
+    dias_semana_customizados: normalizeCustomWeekDays_(payload.customWeekDays),
     id_arquivo_drive: driveFileId,
     criado_em: nowIso,
   })
@@ -397,15 +557,79 @@ function updateLaunch_(payload) {
 
   if (!launchId) throw new Error('launchId obrigatorio.')
 
+  const launch = findRowByField_('lancamentos', ['id_lancamento', 'launchId'], launchId)
+  if (!launch) throw new Error('Lancamento nao encontrado.')
+
+  const nextCompany = firstDefined_(data.empresa, data.company, launch.empresa)
+  const nextEmployeeId = firstDefined_(data.id_funcionario, data.employeeId, launch.id_funcionario)
+  const nextPostId = firstDefined_(data.id_posto, data.postId, launch.id_posto)
+  const nextShiftId = firstDefined_(data.id_turno, data.shiftId, launch.id_turno)
+  const nextEventualDate = firstDefined_(data.data_eventual, data.eventualDate, launch.data_eventual)
+  const nextStartDate = firstDefined_(data.data_inicio, data.startDate, launch.data_inicio)
+  const currentStartDate = String(launch.data_inicio || '')
+
   updateRowByField_('lancamentos', ['id_lancamento', 'launchId'], launchId, {
+    empresa: nextCompany,
+    id_funcionario: nextEmployeeId,
+    id_posto: nextPostId,
+    id_turno: nextShiftId,
     hora_extra: data.hora_extra !== undefined ? data.hora_extra : data.extraHours,
     desconto_almoco: data.desconto_almoco !== undefined ? data.desconto_almoco : data.lunchDiscount,
+    vale: data.vale !== undefined ? data.vale : data.mealAllowance,
+    motivo_desconto: data.motivo_desconto !== undefined ? data.motivo_desconto : data.discountReason,
     motivo_eventual: data.motivo_eventual !== undefined ? data.motivo_eventual : data.eventualReason,
-    data_eventual: data.data_eventual !== undefined ? data.data_eventual : data.eventualDate,
+    data_eventual: nextEventualDate,
+    data_inicio: nextStartDate,
   })
+
+  const launchType = String(launch.tipo_lancamento || '')
+  if (launchType === 'eventual') {
+    updateRowsByField_('escala_diaria', ['id_lancamento', 'launchId'], launchId, {
+      empresa: nextCompany,
+      id_funcionario: nextEmployeeId,
+      id_posto: nextPostId,
+      id_turno: nextShiftId,
+      data: nextEventualDate,
+    })
+  } else {
+    const shiftDays = getDateDiffInDays_(currentStartDate, nextStartDate)
+    const extraPatch = {
+      empresa: nextCompany,
+      id_funcionario: nextEmployeeId,
+      id_posto: nextPostId,
+      id_turno: nextShiftId,
+    }
+    if (shiftDays !== null && shiftDays !== 0) {
+      shiftEscalaDatesByLaunch_(launchId, shiftDays, extraPatch)
+    } else {
+      updateRowsByField_('escala_diaria', ['id_lancamento', 'launchId'], launchId, extraPatch)
+    }
+  }
 
   logAudit_('updateLaunch', payload, true, launchId)
   return { launchId: launchId, updated: true }
+}
+
+function updateScaleEntry_(payload) {
+  const scaleId = String(payload.scaleId || payload.id_escala || '').trim()
+  const data = payload.data || {}
+
+  if (!scaleId) throw new Error('scaleId obrigatorio.')
+
+  updateRowByField_('escala_diaria', ['id_escala', 'scaleId'], scaleId, {
+    empresa: firstDefined_(data.empresa, data.company),
+    id_funcionario: firstDefined_(data.id_funcionario, data.employeeId),
+    id_posto: firstDefined_(data.id_posto, data.postId),
+    id_turno: firstDefined_(data.id_turno, data.shiftId),
+    data: firstDefined_(data.data, data.date),
+    status: firstDefined_(data.status),
+    inicio: firstDefined_(data.inicio, data.start),
+    fim: firstDefined_(data.fim, data.end),
+    origem: 'ajuste_manual',
+  })
+
+  logAudit_('updateScaleEntry', payload, true, scaleId)
+  return { scaleId: scaleId, updated: true }
 }
 
 function getRecentRecords_(company, limit) {
@@ -443,19 +667,87 @@ function getRecentRecords_(company, limit) {
         id_lancamento: String(l.id_lancamento || ''),
         criado_em: String(l.criado_em || ''),
         empresa: String(l.empresa || ''),
+        id_funcionario: String(l.id_funcionario || ''),
         nome_funcionario: String(emp.nome || l.id_funcionario || 'Nao informado'),
         categoria_funcionario: String(emp.categoria || 'Nao informado'),
+        id_posto: String(l.id_posto || ''),
         nome_posto: String(post.nome || l.id_posto || 'Nao informado'),
+        id_turno: String(l.id_turno || ''),
         nome_turno: String(shift.nome || l.id_turno || 'Nao informado'),
         tipo_lancamento: String(l.tipo_lancamento || ''),
         tipo_lancamento_label: String(l.tipo_lancamento || '') === 'fixo' ? 'Turno Fixo' : 'Turno Eventual',
         motivo_eventual: String(l.motivo_eventual || ''),
         motivo_eventual_label: labelEventualReason_(String(l.motivo_eventual || '')),
         data_eventual: String(l.data_eventual || ''),
+        data_inicio: String(l.data_inicio || ''),
         registros_gerados: Number(countByLaunch[String(l.id_lancamento || '')] || 0),
         dias_lote: l.dias_lote ? Number(l.dias_lote) : null,
         hora_extra: Number(l.hora_extra || 0),
         desconto_almoco: Number(l.desconto_almoco || 0),
+        vale: Number(l.vale || 0),
+        motivo_desconto: String(l.motivo_desconto || ''),
+      }
+    })
+}
+
+function getRecordsReport_(company, employeeId, postId, month, limit) {
+  const launches = lerAbaCanonica_('lancamentos')
+  const daily = lerAbaCanonica_('escala_diaria')
+  const funcionarios = lerAbaCanonica_('funcionarios')
+  const postos = lerAbaCanonica_('postos')
+  const turnos = lerAbaCanonica_('turnos')
+
+  const launchById = toMap_(launches, 'id_lancamento')
+  const empById = toMap_(funcionarios, 'id_funcionario')
+  const postById = toMap_(postos, 'id_posto')
+  const shiftById = toMap_(turnos, 'id_turno')
+
+  return daily
+    .filter(function(row) {
+      if (company && String(row.empresa || '') !== company) return false
+      if (employeeId && String(row.id_funcionario || '') !== employeeId) return false
+      if (postId && String(row.id_posto || '') !== postId) return false
+      if (month && !dateMatchesMonth_(row.data, month)) return false
+      return true
+    })
+    .sort(function(a, b) {
+      return new Date(b.data || b.criado_em || 0).getTime() - new Date(a.data || a.criado_em || 0).getTime()
+    })
+    .slice(0, Math.max(1, Number(limit || 500)))
+    .map(function(row) {
+      const launch = launchById[String(row.id_lancamento || '')] || {}
+      const employee = empById[String(row.id_funcionario || '')] || {}
+      const post = postById[String(row.id_posto || '')] || {}
+      const shift = shiftById[String(row.id_turno || '')] || {}
+
+      return {
+        id_escala: String(row.id_escala || ''),
+        id_lancamento: String(row.id_lancamento || ''),
+        criado_em: String(row.criado_em || launch.criado_em || ''),
+        data: String(row.data || ''),
+        status: String(row.status || ''),
+        origem: String(row.origem || ''),
+        inicio: String(row.inicio || ''),
+        fim: String(row.fim || ''),
+        empresa: String(row.empresa || launch.empresa || ''),
+        id_funcionario: String(row.id_funcionario || launch.id_funcionario || ''),
+        nome_funcionario: String(employee.nome || row.id_funcionario || 'Nao informado'),
+        categoria_funcionario: String(employee.categoria || 'Nao informado'),
+        id_posto: String(row.id_posto || launch.id_posto || ''),
+        nome_posto: String(post.nome || row.id_posto || 'Nao informado'),
+        id_turno: String(row.id_turno || launch.id_turno || ''),
+        nome_turno: String(shift.nome || row.id_turno || 'Nao informado'),
+        tipo_lancamento: String(launch.tipo_lancamento || ''),
+        tipo_lancamento_label: String(launch.tipo_lancamento || '') === 'fixo' ? 'Turno Fixo' : 'Turno Eventual',
+        motivo_eventual: String(launch.motivo_eventual || ''),
+        motivo_eventual_label: labelEventualReason_(String(launch.motivo_eventual || '')),
+        data_eventual: String(launch.data_eventual || ''),
+        data_inicio: String(launch.data_inicio || ''),
+        dias_lote: launch.dias_lote ? Number(launch.dias_lote) : null,
+        hora_extra: Number(launch.hora_extra || 0),
+        desconto_almoco: Number(launch.desconto_almoco || 0),
+        vale: Number(launch.vale || 0),
+        motivo_desconto: String(launch.motivo_desconto || ''),
       }
     })
 }
@@ -511,7 +803,7 @@ function validarSessao_(token) {
 }
 
 function aplicarValidacoes_() {
-  setValidation_('funcionarios', 'categoria', ['vigilante', 'limpeza'])
+  setValidation_('categorias', 'ativo', ['TRUE', 'FALSE'])
   setValidation_('funcionarios', 'empresa', ['l4_servicos', 'l4_pro_service'])
   setValidation_('funcionarios', 'ativo', ['TRUE', 'FALSE'])
 
@@ -524,7 +816,7 @@ function aplicarValidacoes_() {
 
   setValidation_('lancamentos', 'tipo_lancamento', ['fixo', 'eventual'])
   setValidation_('escala_diaria', 'status', ['TRABALHO', 'FOLGA', 'FALTA'])
-  setValidation_('escala_diaria', 'origem', ['fixo', 'eventual'])
+  setValidation_('escala_diaria', 'origem', ['fixo', 'eventual', 'ajuste_manual'])
   setValidation_('usuarios', 'ativo', ['TRUE', 'FALSE'])
 }
 
@@ -614,6 +906,95 @@ function updateRowByField_(sheetName, fieldAliases, idValue, patch) {
   return true
 }
 
+function updateRowsByField_(sheetName, fieldAliases, idValue, patch) {
+  const sheet = getSheetOrThrow_(sheetName)
+  const values = sheet.getDataRange().getValues()
+  if (values.length < 2) throw new Error('Nenhum registro para atualizar.')
+
+  const headers = values[0]
+  const idCol = findHeaderIndex_(headers, fieldAliases)
+  if (idCol < 0) throw new Error('Campo ID nao encontrado.')
+
+  for (let i = 1; i < values.length; i += 1) {
+    if (String(values[i][idCol] || '').trim() !== idValue) continue
+
+    Object.keys(patch).forEach(function(key) {
+      if (patch[key] === undefined) return
+      const col = findHeaderIndex_(headers, [key])
+      if (col < 0) return
+      sheet.getRange(i + 1, col + 1).setValue(patch[key])
+    })
+  }
+
+  return true
+}
+
+function findRowByField_(sheetName, fieldAliases, idValue) {
+  const rows = lerAbaCanonica_(sheetName)
+  const aliases = fieldAliases || []
+
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i]
+    for (let j = 0; j < aliases.length; j += 1) {
+      const alias = aliases[j]
+      if (String(row[alias] || '').trim() === idValue) {
+        return row
+      }
+    }
+  }
+
+  return null
+}
+
+function getDateDiffInDays_(currentDate, nextDate) {
+  const current = parseIsoDate_(currentDate)
+  const next = parseIsoDate_(nextDate)
+  if (!current || !next) return null
+
+  const diffMs = next.getTime() - current.getTime()
+  return Math.round(diffMs / 86400000)
+}
+
+function parseIsoDate_(value) {
+  const text = String(value || '').trim()
+  if (!text) return null
+  const date = new Date(text + 'T00:00:00')
+  if (isNaN(date.getTime())) return null
+  return date
+}
+
+function formatIsoDate_(date) {
+  return Utilities.formatDate(date, TZ, 'yyyy-MM-dd')
+}
+
+function shiftEscalaDatesByLaunch_(launchId, shiftDays, basePatch) {
+  const sheet = getSheetOrThrow_('escala_diaria')
+  const values = sheet.getDataRange().getValues()
+  if (values.length < 2) return
+
+  const headers = values[0]
+  const idCol = findHeaderIndex_(headers, ['id_lancamento', 'launchId'])
+  const dataCol = findHeaderIndex_(headers, ['data', 'date'])
+  if (idCol < 0 || dataCol < 0) return
+
+  for (let i = 1; i < values.length; i += 1) {
+    if (String(values[i][idCol] || '').trim() !== launchId) continue
+
+    const currentDate = parseIsoDate_(values[i][dataCol])
+    const shiftedDate = currentDate ? new Date(currentDate.getTime() + shiftDays * 86400000) : null
+
+    Object.keys(basePatch || {}).forEach(function(key) {
+      const col = findHeaderIndex_(headers, [key])
+      if (col < 0 || basePatch[key] === undefined) return
+      sheet.getRange(i + 1, col + 1).setValue(basePatch[key])
+    })
+
+    if (shiftedDate) {
+      sheet.getRange(i + 1, dataCol + 1).setValue(formatIsoDate_(shiftedDate))
+    }
+  }
+}
+
 function nextUniqueId_(sheetName, idField, baseId) {
   const rows = lerAbaCanonica_(sheetName)
   const ids = new Set(rows.map(function(r) {
@@ -629,6 +1010,41 @@ function nextUniqueId_(sheetName, idField, baseId) {
     candidate = baseId + '-' + n
   }
   return candidate
+}
+
+function firstDefined_() {
+  for (let i = 0; i < arguments.length; i += 1) {
+    if (arguments[i] !== undefined) return arguments[i]
+  }
+  return ''
+}
+
+function ensureCategoryExists_(categoryName) {
+  const name = String(categoryName || '').trim()
+  if (!name) return
+
+  const value = toId_(name).replace(/-/g, '_')
+  const existing = findRowByField_('categorias', ['id_categoria', 'categoryId'], value)
+  const nowIso = new Date().toISOString()
+
+  if (existing) {
+    if (!isAtivo_(existing.ativo)) {
+      updateRowByField_('categorias', ['id_categoria', 'categoryId'], value, {
+        nome: name,
+        ativo: 'TRUE',
+        atualizado_em: nowIso,
+      })
+    }
+    return
+  }
+
+  appendObjetoCanonico_('categorias', {
+    id_categoria: value,
+    nome: name,
+    ativo: 'TRUE',
+    criado_em: nowIso,
+    atualizado_em: nowIso,
+  })
 }
 
 function saveAttachmentToDrive_(attachment, employeeId, company, referenceDate) {
@@ -797,6 +1213,10 @@ function labelEventualReason_(reason) {
     contratado_eventual: 'Contratado eventual',
   }
   return map[reason] || ''
+}
+
+function defaultCargoByCategory_(category) {
+  return String(category || '')
 }
 
 function toId_(value) {

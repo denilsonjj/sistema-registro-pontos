@@ -117,6 +117,16 @@ const SHIFT_MAP = SHIFT_DEFINITIONS.reduce((accumulator, shift) => {
   return accumulator
 }, {})
 
+export const WEEKDAY_OPTIONS = [
+  { value: 1, shortLabel: 'Seg', label: 'Segunda-feira' },
+  { value: 2, shortLabel: 'Ter', label: 'Terça-feira' },
+  { value: 3, shortLabel: 'Qua', label: 'Quarta-feira' },
+  { value: 4, shortLabel: 'Qui', label: 'Quinta-feira' },
+  { value: 5, shortLabel: 'Sex', label: 'Sexta-feira' },
+  { value: 6, shortLabel: 'Sab', label: 'Sábado' },
+  { value: 0, shortLabel: 'Dom', label: 'Domingo' },
+]
+
 function normalizeFamily(value) {
   const family = String(value || '').toLowerCase().trim()
 
@@ -136,6 +146,34 @@ function normalizeParity(value) {
   return ''
 }
 
+function normalizeWeekDays(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => Number(item))
+      .filter((item) => Number.isInteger(item) && item >= 0 && item <= 6)
+      .filter((item, index, array) => array.indexOf(item) === index)
+      .sort((left, right) => {
+        const leftIndex = left === 0 ? 7 : left
+        const rightIndex = right === 0 ? 7 : right
+        return leftIndex - rightIndex
+      })
+  }
+
+  const raw = String(value || '').trim()
+  if (!raw) return []
+
+  return raw
+    .split(',')
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isInteger(item) && item >= 0 && item <= 6)
+    .filter((item, index, array) => array.indexOf(item) === index)
+    .sort((left, right) => {
+      const leftIndex = left === 0 ? 7 : left
+      const rightIndex = right === 0 ? 7 : right
+      return leftIndex - rightIndex
+    })
+}
+
 export function normalizeShiftForEngine(shift) {
   if (!shift) return null
 
@@ -149,20 +187,12 @@ export function normalizeShiftForEngine(shift) {
     shift.saturdayEnd || shift.sabEnd || shift.sabSaida || shift.saida_sabado || '',
   ).trim()
   const parity = normalizeParity(shift.parity || shift.paridade)
+  const workDays = normalizeWeekDays(shift.workDays || shift.diasSemana || shift.weekDays)
 
   if (!family) return null
-
-  if (family === '12x36' && (!start || !end || !parity)) {
-    return null
-  }
-
-  if (family === '5x2' && (!start || !end)) {
-    return null
-  }
-
-  if (family === '6x1' && (!start || !end || !saturdayStart || !saturdayEnd)) {
-    return null
-  }
+  if (family === '12x36' && (!start || !end || !parity)) return null
+  if (family === '5x2' && (!start || !end)) return null
+  if (family === '6x1' && (!start || !end || !saturdayStart || !saturdayEnd)) return null
 
   return {
     id: String(shift.id || shift.id_turno || shift.shiftId || ''),
@@ -172,6 +202,7 @@ export function normalizeShiftForEngine(shift) {
     weekdayEnd: end,
     saturdayStart,
     saturdayEnd,
+    workDays,
     start,
     end,
   }
@@ -244,7 +275,26 @@ function resolve6x1(date, shift) {
   return createWorkingEntry(date, shift.weekdayStart, shift.weekdayEnd)
 }
 
-function resolveShiftEntry(date, shift) {
+function resolveWeeklyCustom(date, shift, recurrence) {
+  const workDays = normalizeWeekDays(recurrence?.workDays)
+  const dayOfWeek = date.getDay()
+
+  if (!workDays.includes(dayOfWeek)) {
+    return createOffEntry(date)
+  }
+
+  if (dayOfWeek === 6 && shift.saturdayStart && shift.saturdayEnd) {
+    return createWorkingEntry(date, shift.saturdayStart, shift.saturdayEnd)
+  }
+
+  return createWorkingEntry(date, shift.weekdayStart || shift.start, shift.weekdayEnd || shift.end)
+}
+
+function resolveShiftEntry(date, shift, recurrence) {
+  if (recurrence?.mode === 'weekly_custom') {
+    return resolveWeeklyCustom(date, shift, recurrence)
+  }
+
   if (shift.family === '12x36') {
     return resolve12x36(date, shift)
   }
@@ -260,12 +310,45 @@ function resolveShiftEntry(date, shift) {
   return createOffEntry(date)
 }
 
-export function generateBatchSchedule({ shiftId, startDate, days, shiftData }) {
+export function describeWeekDays(workDays = []) {
+  const normalized = normalizeWeekDays(workDays)
+  if (!normalized.length) return 'Nenhum dia selecionado'
+
+  return normalized
+    .map((day) => WEEKDAY_OPTIONS.find((option) => option.value === day)?.label || '')
+    .filter(Boolean)
+    .join(', ')
+}
+
+export function describeShiftRule(shift, recurrence) {
+  if (!shift) return ''
+
+  if (recurrence?.mode === 'weekly_custom') {
+    return `Regra personalizada: trabalha em ${describeWeekDays(recurrence.workDays)}.`
+  }
+
+  if (shift.family === '5x2') {
+    return `Regra automática: trabalha de segunda a sexta (${shift.start} - ${shift.end}) e folga sábado e domingo.`
+  }
+
+  if (shift.family === '6x1') {
+    return `Regra automática: trabalha de segunda a sábado. Sábado segue ${shift.saturdayStart} - ${shift.saturdayEnd} e domingo fica como folga.`
+  }
+
+  if (shift.family === '12x36') {
+    const parityLabel = shift.parity === 'par' || shift.parity === 'even' ? 'dias pares' : 'dias ímpares'
+    return `Regra automática: escala 12x36 respeitando ${parityLabel}, no horário ${shift.start} - ${shift.end}.`
+  }
+
+  return ''
+}
+
+export function generateBatchSchedule({ shiftId, startDate, days, shiftData, recurrence }) {
   const normalizedDays = Number(days)
   const normalizedShift = normalizeShiftForEngine(shiftData)
-  const knownShift = shiftId ? SHIFT_MAP[shiftId] : null
+  const knownShift = shiftId ? normalizeShiftForEngine(SHIFT_MAP[shiftId]) : null
 
-  if (!normalizedShift && (!shiftId || !knownShift)) {
+  if (!normalizedShift && !knownShift) {
     return []
   }
 
@@ -283,16 +366,29 @@ export function generateBatchSchedule({ shiftId, startDate, days, shiftData }) {
   return Array.from({ length: totalDays }, (_, index) => {
     const targetDate = addDays(firstDay, index)
     const shift = normalizedShift || knownShift
-    return resolveShiftEntry(targetDate, shift)
+    return resolveShiftEntry(targetDate, shift, recurrence)
   })
+}
+
+export function summarizeGeneratedSchedule(entries = []) {
+  const workingEntries = entries.filter((entry) => entry.status === 'TRABALHO')
+  const offEntries = entries.filter((entry) => entry.status !== 'TRABALHO')
+  const workDates = workingEntries.map((entry) => entry.date)
+
+  return {
+    totalEntries: entries.length,
+    workDays: workingEntries.length,
+    offDays: offEntries.length,
+    workDates,
+    previewDates: workDates.slice(0, 12),
+  }
 }
 
 export const SHIFT_TEMPLATES = SHIFT_DEFINITIONS.reduce((accumulator, shift) => {
   accumulator[shift.id] = {
     name: shift.label,
     family: shift.family,
-    parity:
-      shift.parity === 'even' ? 'par' : shift.parity === 'odd' ? 'impar' : '',
+    parity: shift.parity === 'even' ? 'par' : shift.parity === 'odd' ? 'impar' : '',
     start: shift.start || shift.weekdayStart || '',
     end: shift.end || shift.weekdayEnd || '',
     sabStart: shift.saturdayStart || '',

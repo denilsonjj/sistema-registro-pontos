@@ -1,5 +1,5 @@
 function normalizeText(value) {
-  return value
+  return String(value || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
@@ -26,12 +26,12 @@ export function SelectWithAdd({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-slate-700">{label}</label>
+        <label className="text-sm font-medium text-zinc-800">{label}</label>
         {showAddButton ? (
           <button
             type="button"
             onClick={onAddClick}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-lg font-bold text-blue-600 transition-colors hover:bg-blue-100"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 bg-red-50 text-lg font-bold text-red-700 transition-colors hover:bg-red-100"
             aria-label={`Adicionar ${label}`}
           >
             +
@@ -45,14 +45,14 @@ export function SelectWithAdd({
           value={searchTerm}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder={`Buscar ${label.toLowerCase()}...`}
-          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-base text-slate-700 outline-none ring-blue-600 transition focus:ring-2"
+          className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-base text-zinc-800 outline-none ring-red-600 transition focus:ring-2"
         />
       ) : null}
 
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-base text-slate-700 outline-none ring-blue-600 transition focus:ring-2"
+        className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-base text-zinc-800 outline-none ring-red-600 transition focus:ring-2"
         required
       >
         <option value="">{placeholder}</option>

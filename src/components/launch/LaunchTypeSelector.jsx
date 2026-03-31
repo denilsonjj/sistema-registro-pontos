@@ -21,9 +21,9 @@ export function LaunchTypeSelector({
               onChange={() => onLaunchTypeChange(option.value)}
               className="peer sr-only"
             />
-            <span className="block rounded-xl border border-slate-200 px-3 py-3 text-left text-sm font-semibold text-slate-700 transition-all peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:text-blue-700">
+            <span className="block rounded-2xl border border-zinc-200 px-3 py-3 text-left text-sm font-semibold text-zinc-800 transition-all peer-checked:border-red-700 peer-checked:bg-red-50 peer-checked:text-red-700">
               <span className="block">{option.label}</span>
-              <span className="mt-1 block text-xs font-normal text-slate-500 peer-checked:text-blue-700/80">
+              <span className="mt-1 block text-xs font-normal text-zinc-500">
                 {option.description}
               </span>
             </span>
@@ -34,11 +34,11 @@ export function LaunchTypeSelector({
       {launchType === 'eventual' ? (
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="space-y-1">
-            <label className="text-sm font-medium text-slate-700">Tipo eventual</label>
+            <label className="text-sm font-medium text-zinc-800">Tipo eventual</label>
             <select
               value={eventualReason}
               onChange={(event) => onEventualReasonChange(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-base text-slate-700 outline-none ring-blue-600 transition focus:ring-2"
+              className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-base text-zinc-800 outline-none ring-red-600 transition focus:ring-2"
             >
               {eventualOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -48,12 +48,12 @@ export function LaunchTypeSelector({
             </select>
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-medium text-slate-700">Data eventual</label>
+            <label className="text-sm font-medium text-zinc-800">Data eventual</label>
             <input
               type="date"
               value={eventualDate}
               onChange={(event) => onEventualDateChange(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-base text-slate-700 outline-none ring-blue-600 transition focus:ring-2"
+              className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-base text-zinc-800 outline-none ring-red-600 transition focus:ring-2"
             />
           </div>
         </div>

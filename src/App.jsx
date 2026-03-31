@@ -10,13 +10,19 @@ function App() {
   const auth = useAuth()
   const [page, setPage] = useState('launch')
   const scaleForm = useScaleForm({ enabled: auth.isAuthenticated })
-  const recordsPage = useRecordsPage({ enabled: auth.isAuthenticated })
+  const recordsPage = useRecordsPage({
+    enabled: auth.isAuthenticated,
+    directoryOptions: {
+      employees: scaleForm.options.allEmployees,
+      posts: scaleForm.options.allPosts,
+    },
+  })
 
   if (auth.isChecking) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4">
-        <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
-          <p className="text-sm text-slate-600">Verificando sess\u00e3o...</p>
+      <div className="flex min-h-screen items-center justify-center bg-zinc-100 p-4">
+        <div className="w-full max-w-sm rounded-3xl border border-zinc-200 bg-white p-5 text-center shadow-sm">
+          <p className="text-sm text-zinc-600">Verificando sessão...</p>
         </div>
       </div>
     )
@@ -37,6 +43,11 @@ function App() {
       <RecordsPage
         userName={auth.session?.displayName || 'Operador'}
         recordsState={recordsPage}
+        directoryOptions={{
+          employees: scaleForm.options.allEmployees,
+          posts: scaleForm.options.allPosts,
+          shifts: scaleForm.options.shifts,
+        }}
         onLogout={auth.logout}
         onNavigate={setPage}
         currentPage={page}

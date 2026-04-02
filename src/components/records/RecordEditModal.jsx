@@ -84,6 +84,7 @@ export function RecordEditModal({
   isSaving,
   onClose,
   onSave,
+  onDelete,
 }) {
   const [values, setValues] = useState(() => buildInitialValues(record, directoryOptions))
 
@@ -99,50 +100,68 @@ export function RecordEditModal({
 
   const isEventual = record.launchType === 'eventual'
 
+  const toNumber = (value, fallback = 0) => {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : fallback
+  }
+
+  const toText = (value) => String(value || '').trim()
+
   const handleSubmit = async (event) => {
     event.preventDefault()
+
+    const launchPatch = {}
+    const scalePatch = {}
+
+    const nextCompany = toText(values.company)
+    const nextEmployeeId = toText(values.employeeId)
+    const nextPostId = toText(values.postId)
+    const nextShiftId = toText(values.shiftId)
+    const nextExtraHours = toNumber(values.extraHours, 0)
+    const nextLunchDiscount = toNumber(values.lunchDiscount, 0)
+    const nextMealAllowance = toNumber(values.mealAllowance, 0)
+    const nextDiscountReason = toText(values.discountReason)
+    const nextEventualReason = isEventual ? toText(values.eventualReason) : ''
+    const nextEventualDate = isEventual ? toText(values.eventualDate) : ''
+    const nextReferenceDate = !isEventual ? toText(values.referenceDate) : ''
+
+    const nextScaleDate = toText(values.scaleDate)
+    const nextScaleStatus = toText(values.scaleStatus || 'TRABALHO')
+    const nextStart = nextScaleStatus === 'TRABALHO' ? toText(values.start) : ''
+    const nextEnd = nextScaleStatus === 'TRABALHO' ? toText(values.end) : ''
+
+    if (nextCompany !== toText(record.company)) launchPatch.empresa = nextCompany
+    if (nextEmployeeId !== toText(record.employeeId)) launchPatch.id_funcionario = nextEmployeeId
+    if (nextPostId !== toText(record.postId)) launchPatch.id_posto = nextPostId
+    if (nextShiftId !== toText(record.shiftId)) launchPatch.id_turno = nextShiftId
+    if (nextExtraHours !== toNumber(record.extraHours, 0)) launchPatch.hora_extra = nextExtraHours
+    if (nextLunchDiscount !== toNumber(record.lunchDiscount, 0)) launchPatch.desconto_almoco = nextLunchDiscount
+    if (nextMealAllowance !== toNumber(record.mealAllowance, 0)) launchPatch.vale = nextMealAllowance
+    if (nextDiscountReason !== toText(record.discountReason)) launchPatch.motivo_desconto = nextDiscountReason
+
+    if (isEventual) {
+      if (nextEventualReason !== toText(record.eventualReason)) launchPatch.motivo_eventual = nextEventualReason
+      if (nextEventualDate !== toText(record.eventualDate)) launchPatch.data_eventual = nextEventualDate
+    } else if (nextReferenceDate !== toText(record.startDate)) {
+      launchPatch.data_inicio = nextReferenceDate
+    }
+
+    if (nextCompany !== toText(record.company)) scalePatch.empresa = nextCompany
+    if (nextEmployeeId !== toText(record.employeeId)) scalePatch.id_funcionario = nextEmployeeId
+    if (nextPostId !== toText(record.postId)) scalePatch.id_posto = nextPostId
+    if (nextShiftId !== toText(record.shiftId)) scalePatch.id_turno = nextShiftId
+    if (nextScaleDate !== toText(record.date)) scalePatch.data = nextScaleDate
+    if (nextScaleStatus !== toText(record.status)) scalePatch.status = nextScaleStatus
+    if (nextStart !== toText(record.start)) scalePatch.inicio = nextStart
+    if (nextEnd !== toText(record.end)) scalePatch.fim = nextEnd
 
     await onSave({
       launchId: record.launchId,
       scaleId: record.scaleId,
-      launchData: record.launchId
-        ? {
-            company: values.company,
-            empresa: values.company,
-            employeeId: values.employeeId,
-            id_funcionario: values.employeeId,
-            postId: values.postId,
-            id_posto: values.postId,
-            shiftId: values.shiftId,
-            id_turno: values.shiftId,
-            hora_extra: Number(values.extraHours || 0),
-            desconto_almoco: Number(values.lunchDiscount || 0),
-            vale: Number(values.mealAllowance || 0),
-            motivo_desconto: values.discountReason,
-            extraHours: Number(values.extraHours || 0),
-            lunchDiscount: Number(values.lunchDiscount || 0),
-            mealAllowance: Number(values.mealAllowance || 0),
-            discountReason: values.discountReason,
-            motivo_eventual: isEventual ? values.eventualReason : '',
-            eventualReason: isEventual ? values.eventualReason : '',
-            data_eventual: isEventual ? values.eventualDate : '',
-            eventualDate: isEventual ? values.eventualDate : '',
-            data_inicio: !isEventual ? values.referenceDate : '',
-            startDate: !isEventual ? values.referenceDate : '',
-          }
-        : null,
-      scaleData: record.scaleId
-        ? {
-            empresa: values.company,
-            id_funcionario: values.employeeId,
-            id_posto: values.postId,
-            id_turno: values.shiftId,
-            data: values.scaleDate,
-            status: values.scaleStatus,
-            inicio: values.scaleStatus === 'TRABALHO' ? values.start : '',
-            fim: values.scaleStatus === 'TRABALHO' ? values.end : '',
-          }
-        : null,
+      launchData:
+        record.launchId && Object.keys(launchPatch).length ? launchPatch : null,
+      scaleData:
+        record.scaleId && Object.keys(scalePatch).length ? scalePatch : null,
     })
   }
 
@@ -419,6 +438,41 @@ export function RecordEditModal({
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={async () => {
+                const confirmed = window.confirm(
+                  'Excluir apenas este dia da escala? Esta acao nao pode ser desfeita.',
+                )
+                if (!confirmed || !onDelete) return
+                await onDelete({
+                  scope: 'scale',
+                  scaleId: record.scaleId,
+                  launchId: record.launchId,
+                })
+              }}
+              disabled={isSaving || !record.scaleId}
+              className="rounded-2xl border border-red-200 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Excluir dia
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                const confirmed = window.confirm(
+                  'Excluir o lancamento inteiro (inclui todos os dias do lote)?',
+                )
+                if (!confirmed || !onDelete) return
+                await onDelete({
+                  scope: 'launch',
+                  launchId: record.launchId,
+                })
+              }}
+              disabled={isSaving || !record.launchId}
+              className="rounded-2xl border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Excluir lancamento
+            </button>
             <button
               type="button"
               onClick={onClose}

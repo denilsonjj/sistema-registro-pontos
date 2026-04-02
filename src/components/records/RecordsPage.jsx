@@ -69,13 +69,13 @@ function FilterSelect({ label, value, onChange, options }) {
   )
 }
 
-function RecordCard({ record, onEdit }) {
+function RecordCard({ record, onEdit, onDelete, isSaving }) {
   const isManualAdjustment = record.origin === 'ajuste_manual'
   const isAbsence = record.status === 'FALTA'
 
   return (
     <article
-      className={`rounded-3xl border p-4 shadow-sm ${
+      className={`print-card rounded-3xl border p-4 shadow-sm ${
         isAbsence
           ? 'border-red-200 bg-red-50/50'
           : isManualAdjustment
@@ -117,13 +117,24 @@ function RecordCard({ record, onEdit }) {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => onEdit(record)}
-          className="print:hidden inline-flex items-center justify-center rounded-2xl bg-red-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-800"
-        >
-          Editar
-        </button>
+        <div className="print:hidden flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onEdit(record)}
+            disabled={isSaving}
+            className="inline-flex items-center justify-center rounded-2xl bg-red-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-red-300"
+          >
+            Editar
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(record)}
+            disabled={isSaving}
+            className="inline-flex items-center justify-center rounded-2xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Excluir
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -213,6 +224,18 @@ export function RecordsPage({
     return { total, extraHours, workEntries }
   }, [records])
 
+  const employeeLabelById = useMemo(() => {
+    const map = new Map()
+    ;(directoryOptions?.employees || []).forEach((item) => map.set(item.id, item.label))
+    return map
+  }, [directoryOptions?.employees])
+
+  const postLabelById = useMemo(() => {
+    const map = new Map()
+    ;(directoryOptions?.posts || []).forEach((item) => map.set(item.id, item.label))
+    return map
+  }, [directoryOptions?.posts])
+
   const monthInFocus = useMemo(() => {
     if (!hasLoaded) return '-'
 
@@ -225,6 +248,41 @@ export function RecordsPage({
 
     return '-'
   }, [appliedFilters.date, appliedFilters.month, appliedFilters.period, hasLoaded])
+
+  const printContext = useMemo(() => {
+    const companyLabel =
+      COMPANY_OPTIONS.find((option) => option.value === appliedFilters.company)?.label ||
+      'Todas as empresas'
+    const employeeLabel =
+      appliedFilters.employeeId === 'all'
+        ? 'Todos'
+        : employeeLabelById.get(appliedFilters.employeeId) || appliedFilters.employeeId
+    const postLabel =
+      appliedFilters.postId === 'all'
+        ? 'Todos'
+        : postLabelById.get(appliedFilters.postId) || appliedFilters.postId
+
+    return { companyLabel, employeeLabel, postLabel }
+  }, [appliedFilters.company, appliedFilters.employeeId, appliedFilters.postId, employeeLabelById, postLabelById])
+
+  const handleDeleteRecord = async (record) => {
+    const confirmed = window.confirm(
+      'Deseja excluir este dia da escala? Para excluir o lote inteiro, use o modal de edicao.',
+    )
+    if (!confirmed) return
+    await actions.deleteRecord({
+      scope: 'scale',
+      scaleId: record.scaleId,
+      launchId: record.launchId,
+    })
+  }
+
+  const handlePrint = async () => {
+    if (!hasLoaded || isLoading || isSaving) return
+    const ok = await actions.loadRecords()
+    if (!ok) return
+    window.print()
+  }
 
   return (
     <div className="min-h-screen bg-zinc-100">
@@ -301,8 +359,8 @@ export function RecordsPage({
                     </button>
                     <button
                       type="button"
-                      onClick={() => window.print()}
-                      disabled={!hasLoaded}
+                      onClick={handlePrint}
+                      disabled={!hasLoaded || isLoading || isSaving}
                       className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Imprimir / PDF
@@ -415,22 +473,25 @@ export function RecordsPage({
                 <p className="mt-1 text-sm text-zinc-600">
                   Periodo: {monthInFocus} | Registros: {summary.total}
                 </p>
+                <p className="mt-1 text-xs text-zinc-600">
+                  Empresa: {printContext.companyLabel} | Colaborador: {printContext.employeeLabel} | Posto: {printContext.postLabel}
+                </p>
               </section>
 
               {isLoading ? (
-                <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+                <div className="print:hidden rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
                   Carregando registros...
                 </div>
               ) : null}
 
               {message ? (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                <div className="print:hidden rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
                   {message}
                 </div>
               ) : null}
 
               {error ? (
-                <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                <div className="print:hidden rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
                   {error}
                 </div>
               ) : null}
@@ -442,7 +503,7 @@ export function RecordsPage({
               ) : null}
 
               <section className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div className="print:hidden flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <h2 className="text-base font-semibold text-zinc-950">Registros filtrados</h2>
                     <p className="mt-1 text-sm text-zinc-500">
@@ -465,11 +526,50 @@ export function RecordsPage({
                     Nenhum registro encontrado para esse filtro.
                   </div>
                 ) : (
-                  <div className="mt-4 max-h-[70vh] space-y-3 overflow-y-auto pr-1">
-                    {records.map((record) => (
-                      <RecordCard key={record.id} record={record} onEdit={setEditingRecord} />
-                    ))}
-                  </div>
+                  <>
+                    <div className="mt-4 max-h-[70vh] space-y-3 overflow-y-auto pr-1 print:hidden">
+                      {records.map((record) => (
+                        <RecordCard
+                          key={record.id}
+                          record={record}
+                          onEdit={setEditingRecord}
+                          onDelete={handleDeleteRecord}
+                          isSaving={isSaving}
+                        />
+                      ))}
+                    </div>
+
+                    <div className="hidden print:block">
+                      <table className="print-report-table mt-4 w-full border-collapse text-xs">
+                        <thead>
+                          <tr>
+                            <th>Data</th>
+                            <th>Colaborador</th>
+                            <th>Posto</th>
+                            <th>Turno</th>
+                            <th>Status</th>
+                            <th>Hora extra</th>
+                            <th>Almoco/Janta</th>
+                            <th>Vale</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {records.map((record) => (
+                            <tr key={`print-${record.id}`}>
+                              <td>{formatDate(record.date)}</td>
+                              <td>{formatText(record.employeeName)}</td>
+                              <td>{formatText(record.postName)}</td>
+                              <td>{formatText(record.shiftName)}</td>
+                              <td>{formatText(record.status || '--')}</td>
+                              <td>{formatHours(record.extraHours)}</td>
+                              <td>{formatHours(record.lunchDiscount)}</td>
+                              <td>{formatText(record.mealAllowance, '0')}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 )}
               </section>
             </section>
@@ -488,6 +588,10 @@ export function RecordsPage({
         }}
         onSave={async (payload) => {
           const success = await actions.saveRecordChanges(payload)
+          if (success) setEditingRecord(null)
+        }}
+        onDelete={async (payload) => {
+          const success = await actions.deleteRecord(payload)
           if (success) setEditingRecord(null)
         }}
       />

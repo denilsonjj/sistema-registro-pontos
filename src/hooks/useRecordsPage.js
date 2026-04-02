@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
+  deleteScaleEntry,
+  deleteScaleLaunch,
   getRecordsReport,
   updateScaleEntry,
   updateScaleLaunch,
@@ -267,11 +269,6 @@ export function useRecordsPage({ enabled = true, directoryOptions = {} }) {
     [draftFilters, enabled],
   )
 
-  useEffect(() => {
-    if (!enabled || hasLoaded || isLoading) return
-    void loadRecords(buildDefaultFilters())
-  }, [enabled, hasLoaded, isLoading, loadRecords])
-
   const filteredRecords = useMemo(() => {
     if (!hasLoaded) return []
 
@@ -331,6 +328,42 @@ export function useRecordsPage({ enabled = true, directoryOptions = {} }) {
     }
   }
 
+  const deleteRecord = async ({ launchId, scaleId, scope = 'scale' }) => {
+    if (scope === 'launch' && !launchId) {
+      setError('Lancamento invalido para exclusao.')
+      return false
+    }
+
+    if (scope !== 'launch' && !scaleId) {
+      setError('Registro diario invalido para exclusao.')
+      return false
+    }
+
+    setIsSaving(true)
+    setError('')
+    setMessage('')
+
+    try {
+      if (scope === 'launch') {
+        await deleteScaleLaunch({ launchId })
+        setMessage('Lancamento excluido da planilha.')
+      } else {
+        await deleteScaleEntry({ scaleId, launchId })
+        setMessage('Registro do dia excluido da planilha.')
+      }
+
+      await loadRecords(appliedFilters)
+      return true
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error ? deleteError.message : 'Falha ao excluir registro.',
+      )
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return {
     records: filteredRecords,
     allRecords: records,
@@ -351,6 +384,7 @@ export function useRecordsPage({ enabled = true, directoryOptions = {} }) {
       setPostFilter: (value) => updateFilter('postId', value),
       loadRecords: () => loadRecords(draftFilters),
       saveRecordChanges,
+      deleteRecord,
     },
   }
 }

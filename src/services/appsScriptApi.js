@@ -1,6 +1,6 @@
 const APPS_SCRIPT_ENDPOINT = import.meta.env.VITE_APPS_SCRIPT_URL || ''
 let sessionToken = ''
-const REQUEST_TIMEOUT_MS = 20000
+const REQUEST_TIMEOUT_MS = 90000
 
 function getEndpointUrl(params = {}) {
   if (!APPS_SCRIPT_ENDPOINT) {
@@ -200,6 +200,25 @@ export function updateScaleEntry({ scaleId, data }) {
     payload: {
       scaleId,
       data,
+    },
+  })
+}
+
+export function deleteScaleLaunch({ launchId }) {
+  return requestPost({
+    action: 'deletelaunch',
+    payload: {
+      launchId,
+    },
+  })
+}
+
+export function deleteScaleEntry({ scaleId, launchId }) {
+  return requestPost({
+    action: 'deletescaleentry',
+    payload: {
+      scaleId,
+      launchId,
     },
   })
 }

@@ -840,6 +840,7 @@ export function useScaleForm({ enabled = true } = {}) {
           employeeId: saved.id,
           employeeCategory: saved.category,
         }))
+        setSearch((previous) => ({ ...previous, employee: '' }))
       }
 
       if (type === 'post') {

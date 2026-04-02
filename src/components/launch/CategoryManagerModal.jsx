@@ -39,8 +39,8 @@ export function CategoryManagerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/70 p-3 backdrop-blur-sm sm:items-center sm:justify-center">
-      <div className="w-full max-w-3xl rounded-3xl border border-zinc-200 bg-white p-4 shadow-2xl sm:p-5">
-        <header className="mb-4 flex items-center justify-between">
+      <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-2xl">
+        <header className="flex items-center justify-between border-b border-zinc-100 px-4 py-4 sm:px-5">
           <div>
             <h3 className="text-lg font-semibold text-zinc-950">Gerenciar categorias</h3>
             <p className="text-sm text-zinc-500">
@@ -58,7 +58,8 @@ export function CategoryManagerModal({
           </button>
         </header>
 
-        <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
+          <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
           <section className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
             <h4 className="text-sm font-semibold text-zinc-900">Nova categoria</h4>
             <div className="mt-3 space-y-2">
@@ -180,6 +181,7 @@ export function CategoryManagerModal({
               )
             })}
           </section>
+          </div>
         </div>
       </div>
     </div>

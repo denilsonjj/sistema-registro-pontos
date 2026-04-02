@@ -208,6 +208,14 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: updateScaleEntry_(body.payload || {}) })
     }
 
+    if (action === 'deletelaunch') {
+      return jsonResponse_({ ok: true, data: deleteLaunch_(body.payload || {}) })
+    }
+
+    if (action === 'deletescaleentry') {
+      return jsonResponse_({ ok: true, data: deleteScaleEntry_(body.payload || {}) })
+    }
+
     return jsonResponse_({ ok: false, error: 'action invalida' })
   } catch (err) {
     logAudit_('doPost', null, false, err.message)
@@ -632,6 +640,47 @@ function updateScaleEntry_(payload) {
   return { scaleId: scaleId, updated: true }
 }
 
+function deleteLaunch_(payload) {
+  const launchId = String(payload.launchId || payload.id_lancamento || '').trim()
+  if (!launchId) throw new Error('launchId obrigatorio.')
+
+  const launchDeleted = deleteRowsByField_('lancamentos', ['id_lancamento', 'launchId'], launchId)
+  const dailyDeleted = deleteRowsByField_('escala_diaria', ['id_lancamento', 'launchId'], launchId)
+
+  if (!launchDeleted) throw new Error('Lancamento nao encontrado para exclusao.')
+
+  logAudit_('deleteLaunch', payload, true, launchId + '|' + dailyDeleted)
+  return {
+    launchId: launchId,
+    launchDeleted: launchDeleted,
+    dailyDeleted: dailyDeleted,
+  }
+}
+
+function deleteScaleEntry_(payload) {
+  const scaleId = String(payload.scaleId || payload.id_escala || '').trim()
+  if (!scaleId) throw new Error('scaleId obrigatorio.')
+
+  const launchId = String(payload.launchId || payload.id_lancamento || '').trim()
+  const deleted = deleteRowsByField_('escala_diaria', ['id_escala', 'scaleId'], scaleId)
+  if (!deleted) throw new Error('Registro diario nao encontrado para exclusao.')
+
+  let launchDeleted = 0
+  if (launchId) {
+    const remaining = countRowsByField_('escala_diaria', ['id_lancamento', 'launchId'], launchId)
+    if (remaining === 0) {
+      launchDeleted = deleteRowsByField_('lancamentos', ['id_lancamento', 'launchId'], launchId)
+    }
+  }
+
+  logAudit_('deleteScaleEntry', payload, true, scaleId)
+  return {
+    scaleId: scaleId,
+    deleted: deleted,
+    launchDeleted: launchDeleted,
+  }
+}
+
 function getRecentRecords_(company, limit) {
   const launches = lerAbaCanonica_('lancamentos')
   const daily = lerAbaCanonica_('escala_diaria')
@@ -946,6 +995,42 @@ function findRowByField_(sheetName, fieldAliases, idValue) {
   return null
 }
 
+function deleteRowsByField_(sheetName, fieldAliases, idValue) {
+  const sheet = getSheetOrThrow_(sheetName)
+  const values = sheet.getDataRange().getValues()
+  if (values.length < 2) return 0
+
+  const headers = values[0]
+  const idCol = findHeaderIndex_(headers, fieldAliases)
+  if (idCol < 0) throw new Error('Campo ID nao encontrado.')
+
+  let deleted = 0
+  for (let i = values.length - 1; i >= 1; i -= 1) {
+    if (String(values[i][idCol] || '').trim() !== idValue) continue
+    sheet.deleteRow(i + 1)
+    deleted += 1
+  }
+
+  return deleted
+}
+
+function countRowsByField_(sheetName, fieldAliases, idValue) {
+  const rows = lerAbaCanonica_(sheetName)
+  let count = 0
+
+  rows.forEach(function(row) {
+    for (let i = 0; i < fieldAliases.length; i += 1) {
+      const alias = fieldAliases[i]
+      if (String(row[alias] || '').trim() === idValue) {
+        count += 1
+        return
+      }
+    }
+  })
+
+  return count
+}
+
 function getDateDiffInDays_(currentDate, nextDate) {
   const current = parseIsoDate_(currentDate)
   const next = parseIsoDate_(nextDate)
@@ -1201,7 +1286,7 @@ function findHeaderIndex_(headers, aliases) {
 
 function isAtivo_(value) {
   const raw = String(value || '').toLowerCase().trim()
-  return raw === 'true' || raw === '1' || raw === 'sim'
+  return raw === '' || raw === 'true' || raw === '1' || raw === 'sim'
 }
 
 function labelEventualReason_(reason) {
